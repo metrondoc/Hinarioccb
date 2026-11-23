@@ -1,0 +1,33 @@
+name: Gerar APK
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descompactar projeto
+        run: |
+          ZIP=$(ls *.zip | head -1)
+          mkdir proj && unzip -q "$ZIP" -d proj
+          F=$(find proj -name settings.gradle.kts | head -1)
+          echo "PROJ=$(cd "$(dirname "$F")" && pwd)" >> $GITHUB_ENV
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar APK
+        run: |
+          cd "$PROJ"
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/Hinario.apk"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Hinário v${{ github.run_number }}
+          files: Hinario.apk
